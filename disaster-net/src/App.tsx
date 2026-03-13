@@ -1,17 +1,28 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import DashboardView from './views/DashboardView';
-import MapView from './views/MapView';
-import SyncView from './views/SyncView';
-import SettingsView from './views/SettingsView';
 import BottomNav from './components/BottomNav';
 import { ToastProvider } from './components/ToastProvider';
 import { useIdentity } from './hooks/useIdentity';
 import { IdentitySetup } from './components/IdentitySetup';
 import { OfflineBanner } from './components/OfflineBanner';
 
+// Lazy-loaded views
+const DashboardView = React.lazy(() => import('./views/DashboardView'));
+const MapView = React.lazy(() => import('./views/MapView'));
+const SyncView = React.lazy(() => import('./views/SyncView'));
+const SettingsView = React.lazy(() => import('./views/SettingsView'));
+
 const INITIAL_ID = `NODE-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+// Suspense fallback spinner
+function ViewLoader() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[128px]">
+      <div className="w-8 h-8 border-4 border-[var(--cp-magenta)] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 // Glitch Header Logo component
 function GlitchLogo() {
@@ -61,6 +72,33 @@ function MainLayout() {
       clearInterval(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Screen Wake Lock — keep screen active during emergency use
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+
+    const requestWakeLock = async () => {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+      } catch {
+        // Wake lock not supported or permission denied — silently ignore
+      }
+    };
+
+    requestWakeLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      wakeLock?.release();
     };
   }, []);
 
@@ -127,23 +165,25 @@ function MainLayout() {
 
       {/* ── MAIN CONTENT AREA ── */}
       <main className="flex-1 relative z-10 overflow-hidden hide-scrollbar">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, scale: 0.98, x: 20 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.98, x: -20 }}
-            transition={{ type: 'tween', duration: 0.15 }}
-            className="h-full w-full"
-          >
-            <Routes location={location}>
-              <Route path="/" element={<DashboardView />} />
-              <Route path="/map" element={<MapView />} />
-              <Route path="/sync" element={<SyncView />} />
-              <Route path="/settings" element={<SettingsView />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
+        <Suspense fallback={<ViewLoader />}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, scale: 0.98, x: 20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.98, x: -20 }}
+              transition={{ type: 'tween', duration: 0.15 }}
+              className="h-full w-full"
+            >
+              <Routes location={location}>
+                <Route path="/" element={<DashboardView />} />
+                <Route path="/map" element={<MapView />} />
+                <Route path="/sync" element={<SyncView />} />
+                <Route path="/settings" element={<SettingsView />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* ── BOTTOM NAV ── */}

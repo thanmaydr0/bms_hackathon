@@ -99,6 +99,20 @@ body {
   -webkit-font-smoothing: auto;
 }
 
+/* Touch optimization — eliminate 300ms tap delay, remove highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, [role="button"], input, select, textarea {
+  touch-action: manipulation;
+}
+
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 /* Clip-path utilities */
 .clip-angled {
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);

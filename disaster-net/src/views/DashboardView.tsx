@@ -38,13 +38,14 @@ const priorityConfig = {
 };
 
 export default function DashboardView() {
-  const { feed, isLoading: feedLoading } = useLiveFeed(3000);
+  const { feed, isLoading: feedLoading } = useLiveFeed();
   const { identity } = useIdentity();
 
   const [text, setText] = useState('');
   const [priority, setPriority] = useState<Priority>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isHazardFormOpen, setIsHazardFormOpen] = useState(false);
+  const [displayCount, setDisplayCount] = useState(50);
   const broadcastRef = useRef<HTMLButtonElement>(null);
 
   const { showToast } = useToast();
@@ -216,16 +217,24 @@ export default function DashboardView() {
           ) : feed.length === 0 ? (
             <EmptyFeed />
           ) : (
-            feed.map((item, i) => (
+            feed.slice(0, displayCount).map((item, i) => (
               <motion.div
                 key={`${item.type}-${item.id}`}
                 initial={{ opacity: 0, x: -20, rotateY: 15 }}
                 animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.2, type: 'tween' }}
+                transition={{ delay: Math.min(i, 10) * 0.05, duration: 0.2, type: 'tween' }}
               >
                 <FeedCard item={item} />
               </motion.div>
             ))
+          )}
+          {feed.length > displayCount && (
+            <button
+              onClick={() => setDisplayCount(prev => prev + 50)}
+              className="w-full py-3 font-cyber text-[10px] font-bold tracking-[0.2em] text-[var(--cp-cyan)] border border-[var(--cp-border)] hover:border-[var(--cp-cyan)] hover:bg-[var(--cp-cyan)]/10 transition-colors mt-2"
+            >
+              LOAD MORE ({feed.length - displayCount} remaining)
+            </button>
           )}
         </div>
       </section>
