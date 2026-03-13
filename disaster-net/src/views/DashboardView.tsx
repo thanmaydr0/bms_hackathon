@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveFeed, type FeedItem } from '../hooks/useLiveFeed';
 import { useIdentity } from '../hooks/useIdentity';
 import { addMessage } from '../db/repository';
+import { useToast } from '../hooks/useToast';
 import type { SOSMessage } from '../types';
 import { HazardReportForm } from '../components/HazardReportForm';
 
@@ -36,13 +37,9 @@ export default function DashboardView() {
   const [text, setText] = useState('');
   const [priority, setPriority] = useState<Priority>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isHazardFormOpen, setIsHazardFormOpen] = useState(false);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
+  
+  const { showToast } = useToast();
 
   const handleBroadcast = async () => {
     if (!text.trim() || !identity) return;
@@ -66,6 +63,7 @@ export default function DashboardView() {
           };
         } catch (err) {
           console.warn('Geolocation failed or timed out:', err);
+          showToast('Location unavailable — saving without GPS', 'warning');
         }
       }
 
@@ -86,11 +84,11 @@ export default function DashboardView() {
       // 3. Reset form
       setText('');
       setPriority('info');
-      showToast('Message saved locally');
+      showToast('Message saved locally', 'success');
       
     } catch (error) {
       console.error('Broadcast failed', error);
-      showToast('Error saving message');
+      showToast('Error saving message. Storage may be full.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -103,13 +101,6 @@ export default function DashboardView() {
   return (
     <div className="flex flex-col h-full relative">
       
-      {/* ── Toast Notification ── */}
-      {toastMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[var(--color-surface-2)] text-[var(--color-text)] px-4 py-2 rounded-full text-sm font-medium shadow-lg border border-[var(--color-border)] animate-in fade-in slide-in-from-top-4">
-          {toastMessage}
-        </div>
-      )}
-
       {/* ── SECTION 1: SOS Broadcast Panel ── */}
       <section 
         className={`shrink-0 p-4 border-b bg-[var(--color-surface)] transition-all duration-300 ${panelGlow}`}
@@ -194,7 +185,7 @@ export default function DashboardView() {
       {isHazardFormOpen && (
         <HazardReportForm 
           onClose={() => setIsHazardFormOpen(false)}
-          onSuccess={() => showToast('Hazard reported and saved locally')}
+          onSuccess={() => showToast('Hazard reported and saved locally', 'success')}
         />
       )}
     </div>
