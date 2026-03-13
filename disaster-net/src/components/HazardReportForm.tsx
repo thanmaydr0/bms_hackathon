@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { addHazard } from '../db/repository';
 import { useIdentity } from '../hooks/useIdentity';
@@ -8,6 +9,7 @@ import { cn } from '../lib/utils';
 interface HazardReportFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  initialCoords?: { lat: number; lng: number };
 }
 
 const CATEGORIES = [
@@ -27,7 +29,7 @@ const SEVERITIES = [
   { id: 'critical', label: 'CRIT!', color: 'var(--cp-magenta)',text: 'var(--cp-text)' },
 ] as const;
 
-export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) {
+export function HazardReportForm({ onClose, onSuccess, initialCoords }: HazardReportFormProps) {
   const { identity } = useIdentity();
 
   const [category, setCategory] = useState<HazardReport['category'] | null>(null);
@@ -41,7 +43,11 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
 
   useEffect(() => {
     requestAnimationFrame(() => setIsOpen(true));
-    if ('geolocation' in navigator) {
+    
+    if (initialCoords) {
+      setCoords(initialCoords);
+      setIsLocating(false);
+    } else if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setIsLocating(false); },
         () => { setLocationError(true); setIsLocating(false); },
@@ -51,7 +57,7 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
       setLocationError(true);
       setIsLocating(false);
     }
-  }, []);
+  }, [initialCoords]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -86,26 +92,27 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
   const isFormValid = category && severity && description.trim().length > 0;
   const activeSeverity = SEVERITIES.find(s => s.id === severity);
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end max-w-md mx-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col justify-end pointer-events-none">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: isOpen ? 1 : 0 }}
         transition={{ duration: 0.15 }}
-        className="absolute inset-0 bg-cp-void/90 backdrop-blur-sm"
+        className="absolute inset-0 bg-cp-void/80 backdrop-blur-md pointer-events-auto"
         onClick={handleClose}
       />
 
-      {/* Cyber Panel */}
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: isOpen ? 0 : '100%' }}
-        transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
-        className="relative w-full h-[90vh] flex flex-col bg-cp-base border-t-2 border-cp-border clip-angled-tl"
-        style={{ borderColor: activeSeverity?.color ?? 'var(--cp-border)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="w-full h-full max-w-md mx-auto flex flex-col justify-end pointer-events-auto relative">
+        {/* Cyber Panel */}
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: isOpen ? 0 : '100%' }}
+          transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+          className="relative w-full h-[90%] flex flex-col bg-cp-base border-t-2 border-cp-border clip-angled-tl"
+          style={{ borderColor: activeSeverity?.color ?? 'var(--cp-border)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="relative flex-shrink-0 px-5 pt-5 pb-3 bg-cp-panel border-b-2 border-cp-border shadow-md">
           <div className="flex items-center justify-between">
@@ -126,7 +133,7 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 flex flex-col gap-6 hide-scrollbar relative z-10">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-5 pb-24 flex flex-col gap-6 hide-scrollbar relative z-10">
 
           {/* Background watermark */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-cyber font-black text-[10rem] text-cp-panel/40 pointer-events-none -z-10 select-none">
@@ -235,7 +242,7 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
         </form>
 
         {/* Footer */}
-        <div className="flex-shrink-0 p-5 bg-cp-panel border-t-2 border-cp-border relative z-20 pb-safe">
+        <div className="flex-shrink-0 p-5 bg-cp-panel border-t-2 border-cp-border relative z-20">
           <button
             onClick={() => handleSubmit()}
             disabled={!isFormValid || isSubmitting}
@@ -254,6 +261,8 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
           </button>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </div>,
+    document.body
   );
 }
