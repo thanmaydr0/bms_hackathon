@@ -1,0 +1,5 @@
+src/components/Map/OfflineMap.tsx(5,20): error TS2307: Cannot find module '../../db/db' or its corresponding type declarations.
+src/components/Map/OfflineMap.tsx(72,24): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/components/SyncDialog.tsx(103,38): error TS2367: This comparison appears to be unintentional because the types '"disconnected" | "waiting-for-answer"' and '"connected"' have no overlap.
+src/hooks/useSync.ts(2,32): error TS2307: Cannot find module '../webrtc/PeerConnection' or its corresponding type declarations.
+src/hooks/useSync.ts(3,41): error TS2307: Cannot find module '../db/db' or its corresponding type declarations.

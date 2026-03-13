@@ -1,0 +1,17 @@
+
+C:\4thsem\bms_hackathon\disaster-net\src\hooks\useSync.ts
+  15:5  error  Error: This value cannot be modified
+
+Modifying a value previously passed as an argument to a hook is not allowed. Consider moving the modification before calling the hook.
+
+C:\4thsem\bms_hackathon\disaster-net\src\hooks\useSync.ts:15:5
+  13 |   // When connection logic completes, we sync the current database items over the WebRTC data channel
+  14 |   useEffect(() => {
+> 15 |     peer.onConnect = async () => {
+     |     ^^^^ `peer` cannot be modified
+  16 |       setConnectionState('connected');
+  17 |       
+  18 |       // Perform initial sync of Last-Write-Wins (LWW) conflict strategy  react-hooks/immutability
+
+✖ 1 problem (1 error, 0 warnings)
+

@@ -1,0 +1,25 @@
+
+C:\4thsem\bms_hackathon\disaster-net\src\App.tsx
+   30:14  error  'err' is defined but never used           @typescript-eslint/no-unused-vars
+  125:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\4thsem\bms_hackathon\disaster-net\src\hooks\useSync.ts
+  14:5  error  Error: This value cannot be modified
+
+Modifying a value returned from 'useState()', which should not be modified directly. Use the setter function to update instead.
+
+C:\4thsem\bms_hackathon\disaster-net\src\hooks\useSync.ts:14:5
+  12 |   // When connection logic completes, we sync the current database items over the WebRTC data channel
+  13 |   useEffect(() => {
+> 14 |     peer.onConnect = async () => {
+     |     ^^^^ `peer` cannot be modified
+  15 |       setConnectionState('connected');
+  16 |       
+  17 |       // Perform initial sync of Last-Write-Wins (LWW) conflict strategy  react-hooks/immutability
+
+C:\4thsem\bms_hackathon\disaster-net\src\lib\webrtc\PeerConnection.ts
+  13:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  73:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 5 problems (5 errors, 0 warnings)
+
