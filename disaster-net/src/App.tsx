@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import DashboardView from './views/DashboardView';
 import MapView from './views/MapView';
 import SyncView from './views/SyncView';
+import SettingsView from './views/SettingsView';
 import BottomNav from './components/BottomNav';
 import { ToastProvider } from './components/ToastProvider';
 import { useIdentity } from './hooks/useIdentity';
@@ -26,6 +27,7 @@ function MainLayout() {
   const [time, setTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { identity, updateName, isLoading } = useIdentity();
   const [showIdentitySetup, setShowIdentitySetup] = useState(false);
@@ -106,6 +108,15 @@ function MainLayout() {
                 NODE_ID: {identity?.id.slice(-4) || '----'}
               </span>
             </div>
+
+            {/* Settings gear */}
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-8 h-8 flex items-center justify-center text-[var(--cp-dim)] hover:text-[var(--cp-yellow)] border border-[var(--cp-border)] hover:border-[var(--cp-yellow)] transition-colors bg-[var(--cp-base)]"
+              aria-label="Settings"
+            >
+              <span className="text-base">⚙</span>
+            </button>
           </div>
         </div>
       </header>
@@ -125,6 +136,7 @@ function MainLayout() {
               <Route path="/" element={<DashboardView />} />
               <Route path="/map" element={<MapView />} />
               <Route path="/sync" element={<SyncView />} />
+              <Route path="/settings" element={<SettingsView />} />
             </Routes>
           </motion.div>
         </AnimatePresence>
