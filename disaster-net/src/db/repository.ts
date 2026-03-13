@@ -1,5 +1,5 @@
-import { db } from './database';
-import type { HazardReport, SOSMessage, PeerIdentity, SyncSession } from '../types/index';
+import { db } from '../lib/db/db';
+import type { HazardReport, SOSMessage, PeerIdentity, SyncSession } from '../types';
 
 // ---------------------------------------------------------------------------
 // User Identity
@@ -34,7 +34,7 @@ export async function addHazard(
     ...hazard,
     synced: false,
     timestamp: Date.now(),
-  });
+  } as HazardReport);
 }
 
 export async function getAllHazards(): Promise<HazardReport[]> {
@@ -56,7 +56,7 @@ export async function addMessage(
     ...msg,
     synced: false,
     timestamp: Date.now(),
-  });
+  } as SOSMessage);
 }
 
 export async function getAllMessages(): Promise<SOSMessage[]> {
@@ -86,5 +86,5 @@ export async function bulkUpsertMessages(messages: SOSMessage[]): Promise<void> 
 export async function recordSyncSession(
   session: Omit<SyncSession, 'id'>
 ): Promise<void> {
-  await db.syncSessions.add(session);
+  await db.syncSessions.add(session as SyncSession);
 }
