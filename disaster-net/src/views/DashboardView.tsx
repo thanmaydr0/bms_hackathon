@@ -3,6 +3,7 @@ import { useLiveFeed, type FeedItem } from '../hooks/useLiveFeed';
 import { useIdentity } from '../hooks/useIdentity';
 import { addMessage } from '../db/repository';
 import type { SOSMessage } from '../types';
+import { HazardReportForm } from '../components/HazardReportForm';
 
 // Helper for relative time (e.g. "2 min ago")
 function getRelativeTime(timestamp: number) {
@@ -36,6 +37,7 @@ export default function DashboardView() {
   const [priority, setPriority] = useState<Priority>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isHazardFormOpen, setIsHazardFormOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -70,8 +72,9 @@ export default function DashboardView() {
       // 2. Build and save the message
       const msg: SOSMessage = {
         text: text.trim(),
-        priority: priority === 'sos' ? 'critical' : priority === 'warning' ? 'high' : 'low',
-        senderId: identity.id, // we don't store the name on the message itself, resolving happens on read (or we just use ID)
+        priority, // 'info' | 'warning' | 'sos'
+        senderId: identity.id,
+        senderName: identity.name,
         timestamp: Date.now(),
         synced: false,
         latitude: coords?.lat,
@@ -177,6 +180,23 @@ export default function DashboardView() {
           </div>
         )}
       </section>
+
+      {/* ── Floating Action Button (FAB) ── */}
+      <button
+        onClick={() => setIsHazardFormOpen(true)}
+        className="absolute bottom-6 right-4 w-14 h-14 bg-[var(--color-accent)] text-white rounded-full shadow-lg shadow-red-500/30 flex items-center justify-center text-3xl transition-transform active:scale-90 z-40 hover:-translate-y-1"
+        aria-label="Report Hazard"
+      >
+        +
+      </button>
+
+      {/* ── Hazard Report Bottom Sheet ── */}
+      {isHazardFormOpen && (
+        <HazardReportForm 
+          onClose={() => setIsHazardFormOpen(false)}
+          onSuccess={() => showToast('Hazard reported and saved locally')}
+        />
+      )}
     </div>
   );
 }
@@ -186,8 +206,8 @@ function FeedCard({ item }: { item: FeedItem }) {
   const timeStr = getRelativeTime(item.timestamp);
   
   if (item.type === 'message') {
-    const isSos = item.priority === 'critical';
-    const isWarn = item.priority === 'high';
+    const isSos = item.priority === 'sos';
+    const isWarn = item.priority === 'warning';
     
     return (
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3 shadow-sm">
@@ -201,7 +221,7 @@ function FeedCard({ item }: { item: FeedItem }) {
               {isSos ? 'SOS' : isWarn ? 'WARNING' : 'INFO'}
             </span>
             <span className="text-xs font-semibold text-[var(--color-text-muted)] overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]">
-              {item.senderId.slice(0, 8)} {/* Should lookup actual name, but ID is fine for MVP */}
+              {item.senderName || item.senderId.slice(0, 8)}
             </span>
           </div>
           <div className="flex items-center gap-1">
