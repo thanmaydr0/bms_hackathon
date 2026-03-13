@@ -5,17 +5,16 @@ import { db, type DisasterReport } from '../lib/db/db';
 type ConnectionState = 'disconnected' | 'creating-offer' | 'waiting-for-answer' | 'creating-answer' | 'connected';
 
 export function useSync() {
-  // useRef ensures we have one continuous instance and mutating properties (like onConnect) doesn't violate React immutability rules
   const peerRef = useRef<PeerConnection | null>(null);
-  if (!peerRef.current) {
+  if (peerRef.current === null) {
     peerRef.current = new PeerConnection();
   }
-  const peer = peerRef.current;
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [qrData, setQrData] = useState<string | null>(null);
 
   // When connection logic completes, we sync the current database items over the WebRTC data channel
   useEffect(() => {
+    const peer = peerRef.current!;
     peer.onConnect = async () => {
       setConnectionState('connected');
       
@@ -53,28 +52,31 @@ export function useSync() {
         console.log('Sync complete');
       }
     };
-  }, [peer]);
+  }, []);
 
   // Peer A: Starts the process
   const startAsOffer = useCallback(async () => {
     setConnectionState('creating-offer');
+    const peer = peerRef.current!;
     const offerData = await peer.createOffer();
     setQrData(offerData); // Show this QR code to Peer B
     setConnectionState('waiting-for-answer');
-  }, [peer]);
+  }, []);
 
   // Peer B: Scans Peer A's offer and generates an answer
   const scanOfferAndCreateAnswer = useCallback(async (scannedOffer: string) => {
     setConnectionState('creating-answer');
+    const peer = peerRef.current!;
     const answerData = await peer.receiveOfferAndCreateAnswer(scannedOffer);
     setQrData(answerData); // Show this to Peer A
-  }, [peer]);
+  }, []);
 
   // Peer A: Scans Peer B's answer
   const scanAnswerAndConnect = useCallback(async (scannedAnswer: string) => {
+    const peer = peerRef.current!;
     await peer.receiveAnswer(scannedAnswer);
     // Connection should now establish and fire onConnect...
-  }, [peer]);
+  }, []);
 
   return {
     connectionState,
@@ -83,6 +85,7 @@ export function useSync() {
     scanOfferAndCreateAnswer,
     scanAnswerAndConnect,
     disconnect: () => {
+      const peer = peerRef.current!;
       peer.connection.close();
       setConnectionState('disconnected');
       setQrData(null);

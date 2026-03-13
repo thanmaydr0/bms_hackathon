@@ -4,6 +4,8 @@ import DashboardView from './views/DashboardView';
 import MapView from './views/MapView';
 import SyncView from './views/SyncView';
 import BottomNav from './components/BottomNav';
+import { useIdentity } from './hooks/useIdentity';
+import { IdentitySetup } from './components/IdentitySetup';
 
 function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
@@ -24,6 +26,14 @@ function useOnlineStatus() {
 
 export default function App() {
   const isOnline = useOnlineStatus();
+  const { identity, updateName, isLoading: identityLoading } = useIdentity();
+  const [hasDismissedSetup, setHasDismissedSetup] = useState(false);
+
+  const showIdentitySetup = 
+    !identityLoading && 
+    identity && 
+    identity.name.startsWith('Survivor_') && 
+    !hasDismissedSetup;
 
   return (
     <div
@@ -73,6 +83,15 @@ export default function App() {
 
       {/* ── Fixed bottom nav ── */}
       <BottomNav />
+
+      {/* ── Identity Setup Overlay ── */}
+      {showIdentitySetup && identity && (
+        <IdentitySetup 
+          currentName={identity.name} 
+          onSave={updateName} 
+          onDismiss={() => setHasDismissedSetup(true)} 
+        />
+      )}
     </div>
   );
 }
