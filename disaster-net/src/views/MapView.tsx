@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -6,6 +6,8 @@ import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 import { useLiveFeed } from '../hooks/useLiveFeed';
+import { preloadLocalTiles } from '../lib/tileCachePreloader';
+import { ToastContext } from '../components/ToastProvider';
 
 // Fix for default Leaflet markers in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -93,6 +95,82 @@ function LocationTracker() {
   );
 }
 
+function MapControls() {
+  const map = useMap();
+  const toast = useContext(ToastContext);
+  const [cacheState, setCacheState] = useState<'idle' | 'caching' | 'cached'>('idle');
+  const [progress, setProgress] = useState(0);
+  const [totalTiles, setTotalTiles] = useState(0);
+
+  useEffect(() => {
+    if (localStorage.getItem('map_cached') === 'true') {
+      setCacheState('cached');
+    }
+  }, []);
+
+  const handleCache = async () => {
+    if (cacheState === 'caching' || cacheState === 'cached') return;
+
+    setCacheState('caching');
+    const center = map.getCenter();
+    
+    // Quick polling simulation for progress UI (actual fetch is opaque to progress tracking during Promise.all)
+    let simProgress = 0;
+    const estTotal = 400; // rough estimate
+    setTotalTiles(estTotal);
+    
+    const simInterval = setInterval(() => {
+      simProgress += Math.floor(Math.random() * 5);
+      setProgress(Math.min(simProgress, estTotal - 1));
+    }, 100);
+
+    try {
+      const { total } = await preloadLocalTiles(center.lat, center.lng);
+      clearInterval(simInterval);
+      setProgress(total);
+      setTotalTiles(total);
+      setCacheState('cached');
+      localStorage.setItem('map_cached', 'true');
+      toast?.showToast('Map tiles cached for offline use', 'success');
+    } catch (err) {
+      clearInterval(simInterval);
+      setCacheState('idle');
+      toast?.showToast('Failed to cache map area', 'error');
+    }
+  };
+
+  return (
+    <div className="absolute top-16 right-3 z-[400] pointer-events-auto">
+      <button
+        onClick={handleCache}
+        disabled={cacheState === 'caching' || cacheState === 'cached'}
+        className={`flex items-center gap-2 px-3 py-2 font-cyber font-bold text-[10px] tracking-widest clip-angled shadow-md transition-all ${
+          cacheState === 'cached'
+            ? 'bg-cp-green/20 border-2 border-cp-green text-cp-green shadow-neon-green/50 opacity-80 cursor-default'
+            : cacheState === 'caching'
+            ? 'bg-cp-yellow/20 border-2 border-cp-yellow text-cp-yellow cursor-wait'
+            : 'bg-cp-void border-2 border-cp-cyan text-cp-cyan hover:bg-cp-cyan hover:text-cp-void active:translate-y-1'
+        }`}
+      >
+        {cacheState === 'cached' ? (
+          <>
+            <span>✅</span> MAP CACHED
+          </>
+        ) : cacheState === 'caching' ? (
+          <>
+            <span className="w-3 h-3 border-2 border-cp-yellow border-t-transparent rounded-full animate-spin" />
+            <span className="animate-pulse">CACHING... {progress}/{totalTiles}</span>
+          </>
+        ) : (
+          <>
+            <span>📥</span> CACHE AREA
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export default function MapView() {
   const { feed } = useLiveFeed();
 
@@ -132,6 +210,7 @@ export default function MapView() {
           />
 
           <LocationTracker />
+          <MapControls />
 
           {markers.map((item) => {
             if (item.type === 'hazard') {
@@ -143,23 +222,23 @@ export default function MapView() {
                   position={[item.latitude, item.longitude]}
                   icon={getHazardIcon(item.severity)}
                 >
-                  <Popup className="cyber-popup">
+                  <Popup className="cyber-popup border border-cp-border bg-cp-base">
                     <div className="p-1 min-w-[150px]">
-                      <div className="flex items-center gap-2 mb-2 border-b border-black/10 pb-1">
+                      <div className="flex items-center gap-2 mb-2 border-b-2 border-cp-border pb-1">
                         <span className="text-xl">{icon}</span>
-                        <span className="font-mono text-[10px] font-bold uppercase py-0.5 px-1 bg-black/5 rounded">
+                        <span className="font-mono text-[10px] font-bold uppercase py-0.5 px-1 bg-cp-panel text-cp-text rounded-none border border-cp-border">
                           {item.severity}
                         </span>
                       </div>
-                      <p className="font-sans text-sm mb-2">{item.description}</p>
-                      <p className="font-mono text-[9px] text-gray-500 text-right">{date}</p>
+                      <p className="font-mono text-sm mb-2 text-cp-text">{item.description}</p>
+                      <p className="font-mono text-[9px] text-cp-dim text-right">{date}</p>
                     </div>
                   </Popup>
                 </Marker>
               );
             }
 
-            if (item.type === 'message' && item.priority === 'SOS') {
+            if (item.type === 'message' && item.priority === 'sos') {
               const date = new Date(item.timestamp).toLocaleTimeString();
               return (
                 <Marker 
@@ -167,15 +246,15 @@ export default function MapView() {
                   position={[item.latitude as number, item.longitude as number]}
                   icon={sosIcon}
                 >
-                  <Popup className="cyber-popup">
+                  <Popup className="cyber-popup border-2 border-cp-magenta bg-cp-void shadow-hard-magenta">
                     <div className="p-1 min-w-[150px]">
-                      <div className="flex items-center gap-2 mb-2 border-b border-red-500/20 pb-1">
-                        <span className="font-mono text-[10px] font-bold text-red-600 animate-pulse tracking-widest">
+                      <div className="flex items-center gap-2 mb-2 border-b border-cp-magenta/40 pb-1">
+                        <span className="font-mono text-[10px] font-bold text-cp-magenta animate-pulse tracking-widest">
                           SOS BEACON
                         </span>
                       </div>
-                      <p className="font-sans text-sm mb-2 font-bold">{item.content}</p>
-                      <p className="font-mono text-[9px] text-gray-500 text-right">{date}</p>
+                      <p className="font-mono text-sm mb-2 font-bold text-cp-text">{item.text}</p>
+                      <p className="font-mono text-[9px] text-cp-dim text-right">{date}</p>
                     </div>
                   </Popup>
                 </Marker>
@@ -187,8 +266,8 @@ export default function MapView() {
         </MapContainer>
 
         {/* Subtle grid over map to maintain cyberpunk feel */}
-        <div className="absolute inset-0 z-[400] bg-cyber-grid bg-grid-sm opacity-10 pointer-events-none mix-blend-screen" />
-        <div className="absolute inset-0 z-[400] p-1 bg-gradient-to-b from-cp-cyan via-transparent to-cp-magenta opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 z-[399] bg-cyber-grid bg-grid-sm opacity-10 pointer-events-none mix-blend-screen" />
+        <div className="absolute inset-0 z-[399] p-1 bg-gradient-to-b from-cp-cyan via-transparent to-cp-magenta opacity-30 pointer-events-none" />
       </div>
     </div>
   );
