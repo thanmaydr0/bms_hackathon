@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { addHazard } from '../db/repository';
 import { useIdentity } from '../hooks/useIdentity';
 import type { HazardReport } from '../types';
+import { cn } from '../lib/utils';
 
 interface HazardReportFormProps {
   onClose: () => void;
@@ -9,52 +11,40 @@ interface HazardReportFormProps {
 }
 
 const CATEGORIES = [
-  { id: 'collapsed_building', icon: '🏚️', label: 'Collapsed' },
-  { id: 'blocked_road', icon: '🚧', label: 'Blocked' },
-  { id: 'fire', icon: '🔥', label: 'Fire' },
-  { id: 'flood', icon: '🌊', label: 'Flood' },
-  { id: 'medical', icon: '🏥', label: 'Medical' },
-  { id: 'resource', icon: '📦', label: 'Resource' },
-  { id: 'other', icon: '⚠️', label: 'Other' },
+  { id: 'collapsed_building', icon: '🏚', label: 'STRUC_FAIL' },
+  { id: 'blocked_road',       icon: '🚧', label: 'PATH_BLOCK' },
+  { id: 'fire',               icon: '🔥', label: 'THERMAL' },
+  { id: 'flood',              icon: '🌊', label: 'LIQUID' },
+  { id: 'medical',            icon: '🏥', label: 'BIO_MED' },
+  { id: 'resource',           icon: '📦', label: 'SUPPLY' },
+  { id: 'other',              icon: '⚠️', label: 'ANOMALY' },
 ] as const;
 
 const SEVERITIES = [
-  { id: 'low', label: 'LOW', colorClass: 'bg-[var(--color-safe)] text-white' },
-  { id: 'medium', label: 'MEDIUM', colorClass: 'bg-amber-500 text-white' },
-  { id: 'high', label: 'HIGH', colorClass: 'bg-orange-500 text-white' },
-  { id: 'critical', label: 'CRITICAL', colorClass: 'bg-[var(--color-accent)] text-white animate-pulse' },
+  { id: 'low',      label: 'LVL:1', color: 'var(--cp-green)',  text: 'var(--cp-void)' },
+  { id: 'medium',   label: 'LVL:2', color: 'var(--cp-cyan)',   text: 'var(--cp-void)' },
+  { id: 'high',     label: 'LVL:3', color: 'var(--cp-yellow)', text: 'var(--cp-void)' },
+  { id: 'critical', label: 'CRIT!', color: 'var(--cp-magenta)',text: 'var(--cp-text)' },
 ] as const;
 
 export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) {
   const { identity } = useIdentity();
-  
+
   const [category, setCategory] = useState<HazardReport['category'] | null>(null);
   const [severity, setSeverity] = useState<HazardReport['severity'] | null>(null);
   const [description, setDescription] = useState('');
-  
   const [isLocating, setIsLocating] = useState(true);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Bottom sheet animation state
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Trigger slide up animation
     requestAnimationFrame(() => setIsOpen(true));
-
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setIsLocating(false);
-        },
-        (err) => {
-          console.warn('Geolocation failed in hazard form', err);
-          setLocationError(true);
-          setIsLocating(false);
-        },
+        (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setIsLocating(false); },
+        () => { setLocationError(true); setIsLocating(false); },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
@@ -65,81 +55,90 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
 
   const handleClose = () => {
     setIsOpen(false);
-    setTimeout(onClose, 300); // Wait for slide down transition
+    setTimeout(onClose, 250);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!category || !severity || !description.trim() || !identity) return;
-
     setIsSubmitting(true);
+
     try {
       const hazard: HazardReport = {
-        category,
-        severity,
+        category, severity,
         description: description.trim(),
-        latitude: coords?.lat || 0, // Fallbacks applied if no coords
+        latitude: coords?.lat || 0,
         longitude: coords?.lng || 0,
         reportedBy: identity.id,
         timestamp: Date.now(),
-        synced: false
+        synced: false,
       };
-
       await addHazard(hazard);
       onSuccess();
       handleClose();
     } catch (err) {
       console.error('Failed to save hazard', err);
-      // Could show local error toast here
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const isFormValid = category && severity && description.trim().length > 0;
+  const activeSeverity = SEVERITIES.find(s => s.id === severity);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end max-w-md mx-auto">
       {/* Backdrop */}
-      <div 
-        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`} 
-        onClick={handleClose} 
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isOpen ? 1 : 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0 bg-cp-void/90 backdrop-blur-sm"
+        onClick={handleClose}
       />
 
-      {/* Bottom Sheet */}
-      <div 
-        className={`relative w-full max-w-md mx-auto h-[85vh] flex flex-col rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out`}
-        style={{ 
-          backgroundColor: 'var(--color-bg)',
-          transform: isOpen ? 'translateY(0)' : 'translateY(100%)'
-        }}
+      {/* Cyber Panel */}
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: isOpen ? 0 : '100%' }}
+        transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+        className="relative w-full h-[90vh] flex flex-col bg-cp-base border-t-2 border-cp-border clip-angled-tl"
+        style={{ borderColor: activeSeverity?.color ?? 'var(--cp-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag Handle & Header */}
-        <div className="flex-shrink-0 pt-4 pb-2 px-6 flex flex-col items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] rounded-t-3xl">
-          <div className="w-12 h-1.5 bg-[var(--color-border)] rounded-full mb-4" />
-          <div className="w-full flex justify-between items-center mb-2">
-            <h2 className="text-xl font-bold">Report Hazard</h2>
-            <button 
+        {/* Header */}
+        <div className="relative flex-shrink-0 px-5 pt-5 pb-3 bg-cp-panel border-b-2 border-cp-border shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 bg-cp-magenta animate-pulse" />
+                <span className="font-cyber font-bold text-[10px] tracking-[0.3em] text-cp-text uppercase">INJECT_ANOMALY</span>
+              </div>
+              <h2 className="font-cyber font-black text-xl text-cp-cyan">HAZARD NODE</h2>
+            </div>
+            <button
               onClick={handleClose}
-              className="p-2 rounded-full hover:bg-[var(--color-surface-2)] transition-colors text-[var(--color-text-muted)]"
+              className="w-10 h-10 flex items-center justify-center border-2 border-cp-border text-cp-dim font-cyber text-2xl hover:text-cp-magenta hover:border-cp-magenta transition-none active:translate-y-[2px]"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              ×
             </button>
           </div>
         </div>
 
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-          
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 flex flex-col gap-6 hide-scrollbar relative z-10">
+
+          {/* Background watermark */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-cyber font-black text-[10rem] text-cp-panel/40 pointer-events-none -z-10 select-none">
+            !
+          </div>
+
           {/* Category */}
-          <div>
-            <label className="block text-sm font-bold mb-3 text-[var(--color-text-muted)] uppercase tracking-wider">
-              1. Type of Hazard
+          <div className="relative z-10">
+            <label className="flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.2em] text-cp-dim mb-3">
+              <span className="text-cp-cyan">01</span> // TYPE
             </label>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {CATEGORIES.map((cat) => {
                 const isSelected = category === cat.id;
                 return (
@@ -147,14 +146,17 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id as HazardReport['category'])}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
-                      isSelected 
-                        ? 'bg-[var(--color-surface-2)] border-[var(--color-info)] shadow-md' 
-                        : 'bg-[var(--color-surface)] border-[var(--color-border)] opacity-70 hover:opacity-100'
-                    }`}
+                    className={cn(
+                      'flex flex-col items-center justify-center p-2 border-2 transition-none active:translate-y-[2px]',
+                      isSelected
+                        ? 'bg-cp-cyan/10 border-cp-cyan shadow-hard-cyan text-cp-cyan scale-105 z-10'
+                        : 'bg-cp-base border-cp-border text-cp-dim hover:border-cp-text hover:text-cp-text'
+                    )}
                   >
-                    <span className="text-2xl mb-1">{cat.icon}</span>
-                    <span className="text-[10px] font-semibold text-center leading-tight">{cat.label}</span>
+                    <span className="text-xl mb-1 grayscale">{cat.icon}</span>
+                    <span className="font-mono font-bold text-[8px] text-center leading-tight tracking-wider uppercase">
+                      {cat.label}
+                    </span>
                   </button>
                 );
               })}
@@ -162,25 +164,32 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
           </div>
 
           {/* Severity */}
-          <div>
-            <label className="block text-sm font-bold mb-3 text-[var(--color-text-muted)] uppercase tracking-wider">
-              2. Severity Level
+          <div className="relative z-10">
+            <label className="flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.2em] text-cp-dim mb-3">
+              <span className="text-cp-cyan">02</span> // THREAT_LVL
             </label>
             <div className="flex gap-2">
               {SEVERITIES.map((sev) => {
                 const isSelected = severity === sev.id;
+                const isCrit = sev.id === 'critical';
                 return (
                   <button
                     key={sev.id}
                     type="button"
                     onClick={() => setSeverity(sev.id as HazardReport['severity'])}
-                    className={`flex-1 py-3 rounded-lg text-[10px] font-bold tracking-wider transition-all border ${
-                      isSelected 
-                        ? `${sev.colorClass} border-transparent shadow-lg scale-105` 
-                        : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:bg-[var(--color-surface-2)]'
-                    }`}
+                    className={cn(
+                      'flex-1 py-3 font-cyber text-[12px] font-black tracking-widest border-2 transition-none clip-angled active:translate-y-[2px]',
+                      isSelected
+                        ? `border-transparent`
+                        : 'bg-cp-base text-cp-dim border-cp-border hover:text-cp-text'
+                    )}
+                    style={isSelected ? { 
+                      backgroundColor: sev.color, 
+                      color: sev.text,
+                      boxShadow: `4px 4px 0px ${sev.color}80` 
+                    } : {}}
                   >
-                    {sev.label}
+                    {isCrit && isSelected ? <span className="animate-pulse">{sev.label}</span> : sev.label}
                   </button>
                 );
               })}
@@ -188,62 +197,63 @@ export function HazardReportForm({ onClose, onSuccess }: HazardReportFormProps) 
           </div>
 
           {/* Description */}
-          <div>
-            <label className="block text-sm font-bold mb-3 text-[var(--color-text-muted)] uppercase tracking-wider">
-              3. Details
+          <div className="relative z-10">
+            <label className="flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.2em] text-cp-dim mb-3">
+              <span className="text-cp-cyan">03</span> // LOG_DATA
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the hazard in detail..."
-              className="w-full h-28 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] rounded-xl p-4 resize-none outline-none focus:ring-2 focus:ring-[var(--color-info)]"
+              placeholder="ENTER ANOMALY DETAILS..."
+              className="w-full h-28 bg-cp-void border-2 border-cp-border text-cp-text p-3 resize-none outline-none font-mono text-sm placeholder-cp-border focus:border-cp-cyan transition-none clip-angled"
             />
           </div>
 
-          {/* Location Status */}
-          <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] mb-4">
+          {/* Location status */}
+          <div className="p-3 border-2 border-cp-border bg-cp-panel clip-angled relative z-10">
             <div className="flex items-center gap-3">
               {isLocating ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--color-info)] border-t-transparent" />
-                  <span className="text-sm font-medium text-[var(--color-text-muted)]">Acquiring GPS location...</span>
+                  <div className="w-3 h-3 border-2 border-cp-yellow border-t-transparent animate-spin" />
+                  <span className="font-mono text-[10px] font-bold text-cp-yellow tracking-widest">AQUIRING_GPS...</span>
                 </>
               ) : coords ? (
                 <>
-                  <span className="text-[var(--color-info)]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
-                  <span className="text-xs font-medium font-mono text-[var(--color-text-muted)]">
-                    {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                  <div className="w-2 h-2 bg-cp-cyan" />
+                  <span className="font-mono text-[10px] font-bold text-cp-cyan tracking-widest">
+                    LOC:{coords.lat.toFixed(4)},{coords.lng.toFixed(4)}
                   </span>
                 </>
               ) : locationError ? (
                 <>
-                  <span className="text-[var(--color-accent-2)]">⚠️</span>
-                  <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                    Location unavailable — report will be saved without coordinates.
-                  </span>
+                  <div className="w-2 h-2 bg-cp-magenta animate-pulse" />
+                  <span className="font-mono text-[10px] font-bold text-cp-magenta tracking-widest">GPS_ERR_NO_FIX</span>
                 </>
               ) : null}
             </div>
           </div>
-
         </form>
-        
-        {/* Footer actions */}
-        <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] pb-8 shrink-0">
+
+        {/* Footer */}
+        <div className="flex-shrink-0 p-5 bg-cp-panel border-t-2 border-cp-border relative z-20 pb-safe">
           <button
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={!isFormValid || isSubmitting}
-            className="w-full py-4 rounded-xl font-bold bg-[var(--color-accent)] text-white text-lg disabled:opacity-50 transition-transform active:scale-95"
+            className="w-full py-4 font-cyber font-black text-xl tracking-[0.2em] uppercase transition-none border-2 border-transparent clip-angled active:translate-y-[2px] disabled:opacity-30 disabled:pointer-events-none"
+            style={{
+              backgroundColor: isFormValid ? (activeSeverity?.color ?? 'var(--cp-magenta)') : 'var(--cp-border)',
+              color: isFormValid ? (activeSeverity?.text ?? 'var(--cp-void)') : 'var(--cp-dim)',
+              boxShadow: isFormValid ? `4px 4px 0px ${activeSeverity?.color}40` : 'none'
+            }}
           >
-            {isSubmitting ? 'SAVING...' : 'REPORT HAZARD'}
+            {isSubmitting ? (
+              <span className="animate-pulse">INJECTING...</span>
+            ) : (
+              'EXECUTE_LOG'
+            )}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
