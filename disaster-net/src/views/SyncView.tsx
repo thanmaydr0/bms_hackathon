@@ -103,7 +103,7 @@ export default function SyncView() {
               <div className="border-2 border-[var(--cp-magenta)] p-2 w-full relative">
                 <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[var(--cp-void)]" />
                 <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[var(--cp-void)]" />
-                <QRScanner isActive={true} onScan={handleScan} />
+                <QRScanner isActive={true} onScan={handleScan} onCancel={reset} />
                 <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(255,0,60,0.1)_50%)] bg-[length:100%_4px] pointer-events-none" />
               </div>
               <p className="text-center text-xs text-[var(--cp-dim)] max-w-xs mt-2">
@@ -161,7 +161,7 @@ export default function SyncView() {
                   <span className="font-mono text-[9px] text-[var(--cp-dim)]">STEP_02</span>
                 </div>
                 <div className="border-2 border-[var(--cp-magenta)] p-2 relative">
-                  <QRScanner isActive={true} onScan={handleScan} />
+                  <QRScanner isActive={true} onScan={handleScan} onCancel={reset} />
                   <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(255,0,60,0.1)_50%)] bg-[length:100%_4px] pointer-events-none" />
                 </div>
               </div>
