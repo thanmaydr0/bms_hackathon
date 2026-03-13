@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── DisasterNet Design Tokens ─────────────────────────────────────────── */
+:root {
+  --color-bg:           #0a0f1a;   /* deep navy, near-black */
+  --color-surface:      #111827;   /* dark surface */
+  --color-surface-2:    #1f2937;   /* elevated surface */
+  --color-border:       #374151;   /* subtle border */
+  --color-text:         #f9fafb;   /* primary text, near-white */
+  --color-text-muted:   #9ca3af;   /* secondary text */
+  --color-accent:       #ef4444;   /* emergency red — primary CTA */
+  --color-accent-2:     #f59e0b;   /* amber — warnings */
+  --color-safe:         #10b981;   /* green — safe/ok */
+  --color-info:         #3b82f6;   /* blue — informational */
+}
+
+/* ─── Global base styles ─────────────────────────────────────────────────── */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none; /* prevent pull-to-refresh breaking offline UX */
+}
+
+#root {
+  height: 100%;
+}
