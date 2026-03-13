@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast';
 import type { SOSMessage } from '../types';
 import { HazardReportForm } from '../components/HazardReportForm';
 import { cn } from '../lib/utils';
+import { getCurrentPositionSafe } from '../lib/geolocation';
 
 function getRelativeTime(timestamp: number) {
   const s = Math.floor((Date.now() - timestamp) / 1000);
@@ -54,15 +55,11 @@ export default function DashboardView() {
 
     try {
       let coords: { lat: number; lng: number } | undefined;
-      if ('geolocation' in navigator) {
-        try {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 10000 })
-          );
-          coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        } catch {
-          showToast('Location unavailable — saving without GPS', 'warning');
-        }
+      const position = await getCurrentPositionSafe();
+      if (position) {
+        coords = { lat: position.latitude, lng: position.longitude };
+      } else {
+        showToast('Location unavailable — saving without GPS', 'warning');
       }
 
       const msg: SOSMessage = {

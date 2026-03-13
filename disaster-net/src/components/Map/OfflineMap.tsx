@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { db, type DisasterReport } from '../../lib/db/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { getCurrentPositionSafe } from '../../lib/geolocation';
 
 // Fix Leaflet's default icon missing issue in simple React setups
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,15 +33,11 @@ export const OfflineMap: React.FC = () => {
   const reports = useLiveQuery(() => db.reports.toArray(), []);
 
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation([position.coords.latitude, position.coords.longitude]);
-        },
-        (error) => console.error('Error getting location', error),
-        { enableHighAccuracy: true, maximumAge: 0 }
-      );
-    }
+    getCurrentPositionSafe().then((pos) => {
+      if (pos) {
+        setUserLocation([pos.latitude, pos.longitude]);
+      }
+    });
   }, []);
 
   const defaultPosition: [number, number] = [0, 0];

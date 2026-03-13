@@ -5,6 +5,7 @@ import { addHazard } from '../db/repository';
 import { useIdentity } from '../hooks/useIdentity';
 import type { HazardReport } from '../types';
 import { cn } from '../lib/utils';
+import { getCurrentPositionSafe } from '../lib/geolocation';
 
 interface HazardReportFormProps {
   onClose: () => void;
@@ -47,15 +48,15 @@ export function HazardReportForm({ onClose, onSuccess, initialCoords }: HazardRe
     if (initialCoords) {
       setCoords(initialCoords);
       setIsLocating(false);
-    } else if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setIsLocating(false); },
-        () => { setLocationError(true); setIsLocating(false); },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
     } else {
-      setLocationError(true);
-      setIsLocating(false);
+      getCurrentPositionSafe().then((pos) => {
+        if (pos) {
+          setCoords({ lat: pos.latitude, lng: pos.longitude });
+        } else {
+          setLocationError(true);
+        }
+        setIsLocating(false);
+      });
     }
   }, [initialCoords]);
 

@@ -10,6 +10,7 @@ import { preloadLocalTiles } from '../lib/tileCachePreloader';
 import { ToastContext } from '../components/ToastProvider';
 import { HazardReportForm } from '../components/HazardReportForm';
 import { cn } from '../lib/utils';
+import { getCurrentPositionSafe } from '../lib/geolocation';
 
 // Fix for default Leaflet markers in Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -63,6 +64,7 @@ function LocationTracker() {
   const [position, setPosition] = useState<[number, number] | null>(null);
 
   useEffect(() => {
+    if (!navigator.geolocation) return;
     let firstFix = true;
 
     const watchId = navigator.geolocation.watchPosition(
@@ -75,7 +77,7 @@ function LocationTracker() {
           firstFix = false;
         }
       },
-      (err) => console.error('Geolocation error:', err),
+      (err) => console.warn('[LocationTracker] Geolocation error:', err.message),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
@@ -177,15 +179,12 @@ function MapRecenter() {
   const map = useMap();
   const toast = useContext(ToastContext);
 
-  const handleRecenter = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 15),
-        () => toast?.showToast('GPS location not available', 'error'),
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
+  const handleRecenter = async () => {
+    const pos = await getCurrentPositionSafe();
+    if (pos) {
+      map.setView([pos.latitude, pos.longitude], 15);
     } else {
-      toast?.showToast('GPS not supported on this device', 'error');
+      toast?.showToast('GPS location not available', 'error');
     }
   };
 

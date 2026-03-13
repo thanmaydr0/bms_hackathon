@@ -9,6 +9,7 @@ import BottomNav from './components/BottomNav';
 import { ToastProvider } from './components/ToastProvider';
 import { useIdentity } from './hooks/useIdentity';
 import { IdentitySetup } from './components/IdentitySetup';
+import { OfflineBanner } from './components/OfflineBanner';
 
 const INITIAL_ID = `NODE-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
@@ -120,6 +121,9 @@ function MainLayout() {
           </div>
         </div>
       </header>
+
+      {/* Offline Banner */}
+      <OfflineBanner />
 
       {/* ── MAIN CONTENT AREA ── */}
       <main className="flex-1 relative z-10 overflow-hidden hide-scrollbar">

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { useSync } from '../hooks/useSync';
@@ -13,6 +14,8 @@ export default function SyncView() {
     scanOfferAndCreateAnswer, proceedToScanAnswer, scanAnswerAndConnect,
     cancelSync,
   } = useSync();
+
+  const [showTextFallback, setShowTextFallback] = useState(false);
 
   // Load latest sync session history from DB
   const recentSyncs = useLiveQuery(
@@ -121,6 +124,31 @@ export default function SyncView() {
                 onNext={proceedToScanAnswer}
               />
             )}
+            {/* Text fallback toggle */}
+            <button
+              onClick={() => setShowTextFallback(!showTextFallback)}
+              className="font-mono text-[10px] text-[var(--cp-dim)] hover:text-[var(--cp-yellow)] transition-colors underline underline-offset-2 text-center"
+            >
+              📋 {showTextFallback ? 'Hide text' : 'Share as text instead'}
+            </button>
+            {showTextFallback && qrData && (
+              <div className="border border-[var(--cp-yellow)]/40 bg-[var(--cp-base)] p-3 space-y-2">
+                <p className="font-mono text-[10px] text-[var(--cp-dim)]">Copy this text and send it to your partner:</p>
+                <textarea
+                  readOnly
+                  value={qrData}
+                  rows={4}
+                  className="w-full bg-[var(--cp-void)] border border-[var(--cp-border)] text-[var(--cp-text)] p-2 resize-none font-mono text-[10px] focus:outline-none"
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                />
+                <button
+                  onClick={() => { navigator.clipboard.writeText(qrData); }}
+                  className="w-full py-2 font-cyber text-[10px] tracking-widest text-[var(--cp-yellow)] border border-[var(--cp-yellow)]/50 hover:bg-[var(--cp-yellow)] hover:text-black transition-colors"
+                >
+                  📋 COPY TO CLIPBOARD
+                </button>
+              </div>
+            )}
             <button onClick={cancelSync} className="w-full py-3 font-cyber text-[10px] font-bold tracking-[0.2em] text-[var(--cp-dim)] border border-[var(--cp-border)] hover:bg-[var(--cp-base)] transition-colors">
               ABORT SETUP
             </button>
@@ -142,6 +170,31 @@ export default function SyncView() {
               <span className="w-2 h-2 inline-block bg-[var(--cp-cyan)] animate-ping mr-2 rounded-full"/>
               <span className="font-mono text-xs text-[var(--cp-cyan)]">Waiting for host to scan & connect...</span>
             </div>
+            {/* Text fallback for answer QR */}
+            <button
+              onClick={() => setShowTextFallback(!showTextFallback)}
+              className="font-mono text-[10px] text-[var(--cp-dim)] hover:text-[var(--cp-yellow)] transition-colors underline underline-offset-2 text-center"
+            >
+              📋 {showTextFallback ? 'Hide text' : 'Share as text instead'}
+            </button>
+            {showTextFallback && qrData && (
+              <div className="border border-[var(--cp-yellow)]/40 bg-[var(--cp-base)] p-3 space-y-2">
+                <p className="font-mono text-[10px] text-[var(--cp-dim)]">Copy this text and send it to your partner:</p>
+                <textarea
+                  readOnly
+                  value={qrData}
+                  rows={4}
+                  className="w-full bg-[var(--cp-void)] border border-[var(--cp-border)] text-[var(--cp-text)] p-2 resize-none font-mono text-[10px] focus:outline-none"
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                />
+                <button
+                  onClick={() => { navigator.clipboard.writeText(qrData); }}
+                  className="w-full py-2 font-cyber text-[10px] tracking-widest text-[var(--cp-yellow)] border border-[var(--cp-yellow)]/50 hover:bg-[var(--cp-yellow)] hover:text-black transition-colors"
+                >
+                  📋 COPY TO CLIPBOARD
+                </button>
+              </div>
+            )}
             <button onClick={cancelSync} className="w-full py-3 font-cyber text-[10px] font-bold tracking-[0.2em] text-[var(--cp-dim)] border border-[var(--cp-border)] hover:bg-[var(--cp-base)] transition-colors">
               ABORT SETUP
             </button>
